@@ -330,24 +330,68 @@ def therapist_dashboard(therapist_id):
     if not df_outcomes.empty:
         st.bar_chart(df_outcomes.set_index('outcome')['count'])
 
-def education_hub():
+def education_hub(role="Patient"):
     st.markdown("## 📚 Education & Prevention Hub")
     st.markdown("---")
-    st.markdown("### 🔍 Browse Education Resources")
-    df_res = run_query("SELECT resource_id, title, category, format, stage_target, source_url FROM education_resource ORDER BY category, title")
-    if not df_res.empty:
-        categories = ["All"] + sorted(df_res['category'].dropna().unique().tolist())
-        selected   = st.selectbox("Filter by category:", categories)
-        df_show    = df_res if selected == "All" else df_res[df_res['category'] == selected]
-        st.dataframe(df_show, use_container_width=True, height=300)
-    st.markdown("---")
-    st.markdown("### 🛡️ Prevention Strategies")
-    df_prev = run_query("SELECT strategy_name, target_population, source_guideline FROM prevention_strategy ORDER BY strategy_name")
-    st.dataframe(df_prev, use_container_width=True)
-    st.markdown("---")
-    st.markdown("### 🔬 Opportunistic Infection Reference (CDC/NIH Guidelines)")
-    df_oi = run_query("SELECT oi_name, cd4_threshold, prophylaxis_rec, first_line_drug, monitoring_interval FROM oi_reference ORDER BY cd4_threshold")
-    st.dataframe(df_oi, use_container_width=True)
+
+    if role == "Patient":
+        # ── Patient: browse CDC education modules
+        st.markdown("### 🔍 Browse Education Resources")
+        st.caption("CDC and NIH approved health education materials for HIV patients.")
+        df_res = run_query("SELECT title, category, format, stage_target, source_url FROM education_resource ORDER BY category, title")
+        if not df_res.empty:
+            categories = ["All"] + sorted(df_res['category'].dropna().unique().tolist())
+            selected   = st.selectbox("Filter by category:", categories)
+            df_show    = df_res if selected == "All" else df_res[df_res['category'] == selected]
+            st.dataframe(df_show, use_container_width=True, height=300)
+        st.markdown("---")
+        st.markdown("### 🛡️ HIV Prevention Strategies")
+        st.caption("Evidence-based prevention strategies recommended by the CDC.")
+        df_prev = run_query("SELECT strategy_name, target_population, source_guideline FROM prevention_strategy ORDER BY strategy_name")
+        st.dataframe(df_prev, use_container_width=True)
+
+    elif role == "Doctor":
+        # ── Clinician: OI reference + clinical guidelines + prevention
+        st.markdown("### 🔬 Opportunistic Infection Clinical Reference")
+        st.caption("Source: DHHS Guidelines for Prevention and Treatment of OIs in Adults with HIV, May 2024.")
+        df_oi = run_query("SELECT oi_name, cd4_threshold, prophylaxis_rec, first_line_drug, alternative_drug, monitoring_interval FROM oi_reference ORDER BY cd4_threshold")
+        st.dataframe(df_oi, use_container_width=True)
+        st.markdown("---")
+        st.markdown("### 💊 Care Stage Clinical Interventions")
+        st.caption("Recommended intervention levels per HIV care stage.")
+        df_cs = run_query("SELECT stage_name, cd4_range, intervention_level, description FROM care_stage ORDER BY care_stage_id")
+        st.dataframe(df_cs, use_container_width=True)
+        st.markdown("---")
+        st.markdown("### 🛡️ Prevention Strategy Reference")
+        st.caption("CDC evidence-based prevention strategies with source guidelines.")
+        df_prev = run_query("SELECT strategy_name, description, target_population, source_guideline FROM prevention_strategy ORDER BY strategy_name")
+        st.dataframe(df_prev, use_container_width=True)
+        st.markdown("---")
+        st.markdown("### 📋 Clinical Education Resources")
+        st.caption("Clinical and provider-facing education materials.")
+        df_clin = run_query("SELECT title, category, format, source_url FROM education_resource WHERE category IN ('Treatment','Clinical/OI','Testing','Prevention') ORDER BY category, title")
+        st.dataframe(df_clin, use_container_width=True, height=250)
+
+    elif role == "Therapist":
+        # ── Therapist: mental health + psychosocial resources
+        st.markdown("### 🧠 Mental Health & Psychosocial Resources")
+        st.caption("Resources focused on mental health, stigma, and psychosocial support for HIV patients.")
+        df_mh = run_query("SELECT title, category, format, source_url FROM education_resource WHERE category IN ('Mental Health','Stigma / Data','Living with HIV','Basic Education') ORDER BY category, title")
+        st.dataframe(df_mh, use_container_width=True, height=300)
+        st.markdown("---")
+        st.markdown("### 🤝 Therapy Modality Reference")
+        st.caption("Overview of therapy types used in HIV psychosocial care.")
+        therapy_data = {
+            "Modality": ["Cognitive Behavioral Therapy (CBT)", "Group Therapy", "Motivational Interviewing", "Mindfulness-Based Therapy", "Occupational Therapy", "Speech Therapy", "Physical Therapy", "Hydrotherapy"],
+            "Primary Use": ["Adherence, depression, anxiety", "Peer support, reducing isolation", "Medication adherence, behavior change", "Stress management, anxiety", "Functional recovery, daily living", "Communication, neurological symptoms", "Physical rehabilitation", "Pain management, relaxation"],
+            "Recommended For": ["All stages", "Chronic & Symptomatic stages", "Non-adherent patients", "High anxiety patients", "AIDS & Symptomatic stages", "Neurological complications", "Physical complications", "Symptomatic & AIDS stages"]
+        }
+        import pandas as pd
+        st.dataframe(pd.DataFrame(therapy_data), use_container_width=True)
+        st.markdown("---")
+        st.markdown("### 🛡️ Prevention Strategies — Psychosocial Focus")
+        df_prev = run_query("SELECT strategy_name, description, target_population FROM prevention_strategy WHERE strategy_name IN ('Mental Health & Psychosocial Support','U=U (Undetectable = Untransmittable)','HIV Testing & Status Awareness','Partner Services & Contact Notification') ORDER BY strategy_name")
+        st.dataframe(df_prev, use_container_width=True)
 
 if not st.session_state.logged_in:
     login_screen()
@@ -374,14 +418,14 @@ else:
         if page == "🏠 My Dashboard":
             patient_dashboard(st.session_state.user_id)
         else:
-            education_hub()
+            education_hub(role="Patient")
     elif st.session_state.role == "Doctor":
         if page == "🏥 Clinician Dashboard":
             clinician_dashboard(st.session_state.user_id)
         else:
-            education_hub()
+            education_hub(role="Doctor")
     else:
         if page == "🧠 My Sessions":
             therapist_dashboard(st.session_state.user_id)
         else:
-            education_hub()
+            education_hub(role="Therapist")
