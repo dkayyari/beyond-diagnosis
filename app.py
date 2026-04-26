@@ -291,13 +291,13 @@ def clinician_dashboard(doctor_id):
     st.markdown("---")
     st.markdown("### ⚠️ Missed Visit Alerts — Top 10 Patients")
     df_missed = run_query("""
-        SELECT p.patient_id, p.anon_alias, p.age_range,
+        SELECT p.patient_id, CONCAT('Patient #', p.patient_id) AS patient_ref, p.age_range,
                cs.stage_name, COUNT(*) AS missed_visits
         FROM followup_instance fi
         JOIN patient p     ON fi.patient_id      = p.patient_id
         JOIN care_stage cs ON p.current_stage_id = cs.care_stage_id
         WHERE fi.status = 'Missed'
-        GROUP BY p.patient_id, p.anon_alias, p.age_range, cs.stage_name
+        GROUP BY p.patient_id, patient_ref, p.age_range, cs.stage_name
         ORDER BY missed_visits DESC LIMIT 10
     """)
     if not df_missed.empty:
@@ -306,7 +306,7 @@ def clinician_dashboard(doctor_id):
     st.markdown("### 👥 All Patients Overview")
     search = st.text_input("🔍 Search by alias or care stage:", "")
     df_all = run_query("""
-        SELECT p.patient_id, p.anon_alias, p.age_range, p.gender_identity,
+        SELECT p.patient_id, CONCAT('Patient #', p.patient_id) AS patient_ref, p.age_range, p.gender_identity,
                cs.stage_name,
                COUNT(DISTINCT fi.followup_date) AS total_visits,
                SUM(CASE WHEN fi.status = 'Missed'    THEN 1 ELSE 0 END) AS missed,
@@ -314,12 +314,12 @@ def clinician_dashboard(doctor_id):
         FROM patient p
         LEFT JOIN care_stage cs        ON p.current_stage_id = cs.care_stage_id
         LEFT JOIN followup_instance fi ON p.patient_id       = fi.patient_id
-        GROUP BY p.patient_id, p.anon_alias, p.age_range, p.gender_identity, cs.stage_name
+        GROUP BY p.patient_id, patient_ref, p.age_range, p.gender_identity, cs.stage_name
         ORDER BY missed DESC
     """)
     if search:
         df_all = df_all[
-            df_all['anon_alias'].str.contains(search, case=False, na=False) |
+            df_all['patient_ref'].str.contains(search, case=False, na=False) |
             df_all['stage_name'].str.contains(search, case=False, na=False)
         ]
     st.dataframe(df_all, use_container_width=True, height=350)
@@ -348,7 +348,7 @@ def therapist_dashboard(therapist_id):
     st.markdown("---")
     st.markdown("### 📋 My Sessions")
     df_sessions = run_query(f"""
-        SELECT ts.session_date, p.anon_alias, ts.modality, ts.outcome, ts.session_notes
+        SELECT ts.session_date, CONCAT('Patient #', p.patient_id) AS patient_ref, ts.modality, ts.outcome, ts.session_notes
         FROM therapy_session ts
         JOIN patient p ON ts.patient_id = p.patient_id
         WHERE ts.therapist_id = {therapist_id}
