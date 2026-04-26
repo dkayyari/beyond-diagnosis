@@ -30,8 +30,186 @@ st.markdown("""
     h1 { color: #1A3A5C !important; }
     h2 { color: #0D8A8A !important; }
     h3 { color: #1A3A5C !important; }
+
+    /* Care Stage Tracker */
+    .stage-tracker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 10px;
+        gap: 0px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    .stage-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex: 1;
+        min-width: 100px;
+    }
+    .stage-circle {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+        border: 3px solid #CBD5E0;
+        background: #EDF2F7;
+        color: #718096;
+        z-index: 2;
+        position: relative;
+    }
+    .stage-circle.active {
+        background: #1A3A5C;
+        border-color: #1A3A5C;
+        color: white;
+        box-shadow: 0 0 0 6px rgba(26,58,92,0.15);
+    }
+    .stage-circle.completed {
+        background: #0D8A8A;
+        border-color: #0D8A8A;
+        color: white;
+    }
+    .stage-circle.suppressed {
+        background: #38A169;
+        border-color: #38A169;
+        color: white;
+        box-shadow: 0 0 0 6px rgba(56,161,105,0.15);
+    }
+    .stage-label {
+        margin-top: 8px;
+        font-size: 11px;
+        text-align: center;
+        color: #4A5568;
+        font-weight: 500;
+        max-width: 90px;
+        line-height: 1.3;
+    }
+    .stage-label.active {
+        color: #1A3A5C;
+        font-weight: 700;
+        font-size: 12px;
+    }
+    .stage-cd4 {
+        font-size: 10px;
+        color: #718096;
+        text-align: center;
+        margin-top: 3px;
+    }
+    .stage-connector {
+        height: 3px;
+        flex: 1;
+        background: #CBD5E0;
+        margin-top: -26px;
+        min-width: 20px;
+    }
+    .stage-connector.done {
+        background: #0D8A8A;
+    }
+    .tracker-box {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #E2E8F0;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .tracker-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1A3A5C;
+        margin-bottom: 4px;
+    }
+    .tracker-subtitle {
+        font-size: 12px;
+        color: #718096;
+        margin-bottom: 12px;
+    }
+    .current-badge {
+        display: inline-block;
+        background: #1A3A5C;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+    .suppressed-badge {
+        display: inline-block;
+        background: #38A169;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Stage definitions (order matters for the visual tracker)
+STAGE_DEFS = [
+    {"id": 1, "name": "Acute HIV",         "short": "Acute",       "cd4": "> 500",    "icon": "1"},
+    {"id": 2, "name": "Chronic HIV",        "short": "Chronic",     "cd4": "200–499",  "icon": "2"},
+    {"id": 3, "name": "Symptomatic HIV",    "short": "Symptomatic", "cd4": "100–199",  "icon": "3"},
+    {"id": 4, "name": "AIDS",               "short": "AIDS",        "cd4": "< 200",    "icon": "4"},
+    {"id": 5, "name": "Virally Suppressed", "short": "Suppressed",  "cd4": "> 200 (U=U)", "icon": "✓"},
+]
+
+def render_stage_tracker(current_stage_id, stage_name):
+    """Render the horizontal care stage progress tracker."""
+    # Determine visual style per stage
+    is_suppressed = (current_stage_id == 5)
+
+    circles_html = ""
+    for i, stage in enumerate(STAGE_DEFS):
+        sid = stage["id"]
+        is_active = (sid == current_stage_id)
+
+        if is_suppressed and sid == 5:
+            circle_class = "suppressed"
+        elif is_active and sid != 5:
+            circle_class = "active"
+        elif sid < current_stage_id and not is_suppressed:
+            circle_class = "completed"
+        elif is_suppressed and sid < 5:
+            circle_class = "completed"
+        else:
+            circle_class = ""
+
+        label_class = "active" if is_active else ""
+
+        # Connector before this stage
+        if i > 0:
+            prev_done = (i < current_stage_id) or (is_suppressed and i <= 4)
+            conn_class = "done" if prev_done else ""
+            circles_html += f'<div class="stage-connector {conn_class}"></div>'
+
+        circles_html += f"""
+        <div class="stage-item">
+            <div class="stage-circle {circle_class}">{stage["icon"]}</div>
+            <div class="stage-label {label_class}">{stage["short"]}</div>
+            <div class="stage-cd4">CD4 {stage["cd4"]}</div>
+        </div>
+        """
+
+    badge = f'<span class="suppressed-badge">Virally Suppressed ✓</span>' if is_suppressed else f'<span class="current-badge">Current Stage</span>'
+
+    st.markdown(f"""
+    <div class="tracker-box">
+        <div class="tracker-title">🗺️ HIV Care Journey &nbsp; {badge}</div>
+        <div class="tracker-subtitle">Showing care stage progression — currently at <strong>{stage_name}</strong></div>
+        <div class="stage-tracker">
+            {circles_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -64,7 +242,7 @@ def login_screen():
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
         SELECT p.patient_id, p.anon_alias, p.age_range, p.gender_identity,
-               p.registration_date, cs.stage_name, cs.cd4_range,
+               p.registration_date, cs.care_stage_id, cs.stage_name, cs.cd4_range,
                cs.intervention_level, cs.description
         FROM patient p
         JOIN care_stage cs ON p.current_stage_id = cs.care_stage_id
@@ -76,13 +254,20 @@ def patient_dashboard(patient_id):
     row = df_patient.iloc[0]
     st.markdown(f"## 👤 Welcome, {row['anon_alias']}")
     st.markdown("---")
+
+    # ── Metrics
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Age Range",  row['age_range'])
     c2.metric("Gender",     row['gender_identity'])
     c3.metric("Care Stage", row['stage_name'])
     c4.metric("CD4 Range",  row['cd4_range'])
+
+    # ── Care Stage Tracker
+    render_stage_tracker(int(row['care_stage_id']), row['stage_name'])
+
     st.info(f"🏥 **Intervention Level:** {row['intervention_level']}  \n📋 {str(row['description'])[:200]}...")
     st.markdown("---")
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 📅 Follow-Up History")
@@ -103,6 +288,7 @@ def patient_dashboard(patient_id):
             st.dataframe(df_fu.style.apply(highlight_status, axis=1), use_container_width=True, height=280)
         else:
             st.info("No follow-up records found.")
+
     with col2:
         st.markdown("### 🧠 Therapy Sessions")
         df_ts = run_query(f"""
@@ -115,6 +301,7 @@ def patient_dashboard(patient_id):
             st.dataframe(df_ts, use_container_width=True, height=280)
         else:
             st.info("No therapy sessions found.")
+
     st.markdown("---")
     st.markdown("### 📚 Education Progress")
     df_ep = run_query(f"""
@@ -133,6 +320,7 @@ def patient_dashboard(patient_id):
         st.dataframe(df_ep, use_container_width=True, height=250)
     else:
         st.info("No education records found.")
+
     st.markdown("---")
     st.markdown("### 🛡️ My Prevention Strategies")
     df_pp = run_query(f"""
