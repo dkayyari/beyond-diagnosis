@@ -73,15 +73,31 @@ if "logged_in" not in st.session_state:
     st.session_state.role      = None
     st.session_state.user_id   = None
 
+# ── Demo credentials
+CREDENTIALS = {
+    "patient":   {"password": "patient123",   "role": "Patient"},
+    "doctor":    {"password": "doctor123",     "role": "Doctor"},
+    "therapist": {"password": "therapist123",  "role": "Therapist"},
+}
+
 def login_screen():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("## ❤️ Beyond Diagnosis")
         st.markdown("#### HIV Patient Support System")
         st.markdown("---")
-        role    = st.selectbox("I am a:", ["Patient", "Doctor", "Therapist"])
+        username = st.text_input("Username:", placeholder="e.g. patient, doctor, therapist")
+        password = st.text_input("Password:", type="password", placeholder="Enter your password")
         user_id_input = st.text_input("Enter your ID:", placeholder="e.g. 1, 25, 100")
         if st.button("🔐 Login", use_container_width=True):
+            username = username.strip().lower()
+            if username not in CREDENTIALS:
+                st.error("❌ Invalid username. Use: patient, doctor, or therapist.")
+                st.stop()
+            if password != CREDENTIALS[username]["password"]:
+                st.error("❌ Incorrect password.")
+                st.stop()
+            role = CREDENTIALS[username]["role"]
             try:
                 user_id = int(user_id_input.strip())
             except ValueError:
@@ -100,6 +116,8 @@ def login_screen():
                 st.rerun()
             else:
                 st.error(f"❌ {role} ID {user_id} not found. Try 1–200 for patients, 1–15 for doctors/therapists.")
+        st.markdown("---")
+        st.caption("Demo credentials — Patient: `patient` / `patient123` | Doctor: `doctor` / `doctor123` | Therapist: `therapist` / `therapist123`")
 
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
