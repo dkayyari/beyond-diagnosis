@@ -65,40 +65,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-STAGE_DEFS = [
-    {"id": 1, "short": "Acute",       "cd4": "> 500 cells/mm³",      "emoji": "🔵"},
-    {"id": 2, "short": "Chronic",     "cd4": "200–499 cells/mm³",    "emoji": "🟡"},
-    {"id": 3, "short": "Symptomatic", "cd4": "100–199 cells/mm³",    "emoji": "🟠"},
-    {"id": 4, "short": "AIDS",        "cd4": "< 200 cells/mm³",      "emoji": "🔴"},
-    {"id": 5, "short": "Suppressed",  "cd4": "> 200 (Undetectable)", "emoji": "🟢"},
-]
 
-def render_stage_tracker(current_stage_id, stage_name):
-    st.markdown(f"### 🗺️ HIV Care Journey — Currently at **{stage_name}**")
-    cols = st.columns(9)  # 5 stages + 4 arrows
-    col_positions = [0, 2, 4, 6, 8]
-
-    for i, stage in enumerate(STAGE_DEFS):
-        sid = stage["id"]
-        col = cols[col_positions[i]]
-
-        if sid == current_stage_id:
-            icon = "📍"
-            label = f"{stage['short']} ← You are here"
-        elif sid < current_stage_id or (current_stage_id == 5):
-            icon = "✅"
-            label = stage["short"]
-        else:
-            icon = "⬜"
-            label = stage["short"]
-
-        col.markdown(f"<div style='text-align:center'>{icon}<br><b>{label}</b><br><small>{stage['cd4']}</small></div>", unsafe_allow_html=True)
-
-        # Arrow between stages
-        if i < 4:
-            cols[col_positions[i] + 1].markdown("<div style='text-align:center;font-size:24px;padding-top:8px'>→</div>", unsafe_allow_html=True)
-
-    st.markdown("---")
 
 
 if "logged_in" not in st.session_state:
@@ -132,7 +99,7 @@ def login_screen():
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
         SELECT p.patient_id, p.anon_alias, p.age_range, p.gender_identity,
-               p.registration_date, cs.care_stage_id,
+               p.registration_date,
                SUBSTRING_INDEX(cs.stage_name, ' (', 1) AS stage_name,
                cs.cd4_range, cs.intervention_level, cs.description
         FROM patient p
@@ -156,9 +123,6 @@ def patient_dashboard(patient_id):
     c2.metric("Gender",     row['gender_identity'])
     c3.metric("Care Stage", row['stage_name'])
     c4.metric("CD4 Range",  row['cd4_range'])
-
-    # ── Care Stage Tracker
-    render_stage_tracker(int(row['care_stage_id']), row['stage_name'])
 
     st.info(f"🏥 Intervention Level: {row['intervention_level']}")
     st.markdown(f"📋 {str(row['description'])}")
