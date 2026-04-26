@@ -43,7 +43,7 @@ def render_stage_tracker(current_stage_id, stage_name):
 
         if sid == current_stage_id:
             icon = "📍"
-            label = f"**{stage['short']}** ← You are here"
+            label = f"{stage['short']} ← You are here"
         elif sid < current_stage_id or (current_stage_id == 5):
             icon = "✅"
             label = stage["short"]
@@ -114,7 +114,60 @@ def patient_dashboard(patient_id):
     # ── Care Stage Tracker
     render_stage_tracker(int(row['care_stage_id']), row['stage_name'])
 
-    st.info(f"🏥 **Intervention Level:** {row['intervention_level']}  \n📋 {str(row['description'])[:200]}...")
+    st.info(f"🏥 Intervention Level: {row['intervention_level']}")
+    st.markdown(f"📋 {str(row['description'])}")
+    st.markdown("---")
+
+    # ── Positive Wellness Card
+    st.markdown("### 💚 Your Progress — You Are Doing Amazing!")
+
+    df_fu_all = run_query(f"SELECT status FROM followup_instance WHERE patient_id = {patient_id}")
+    df_ts_all = run_query(f"SELECT session_date FROM therapy_session WHERE patient_id = {patient_id}")
+    df_ep_all = run_query(f"SELECT completion_status FROM education_progress WHERE patient_id = {patient_id}")
+    df_reg    = run_query(f"SELECT registration_date FROM patient WHERE patient_id = {patient_id}")
+
+    total_visits  = len(df_fu_all)
+    kept_visits   = len(df_fu_all[df_fu_all['status'] == 'Completed']) if not df_fu_all.empty else 0
+    therapy_count = len(df_ts_all)
+    total_modules = len(df_ep_all)
+    done_modules  = len(df_ep_all[df_ep_all['completion_status'] == 'Completed']) if not df_ep_all.empty else 0
+
+    days_in_care = 0
+    if not df_reg.empty:
+        import datetime
+        reg = pd.to_datetime(df_reg.iloc[0]['registration_date'])
+        days_in_care = (datetime.datetime.today() - reg).days
+
+    visit_pct = int((kept_visits / total_visits * 100)) if total_visits > 0 else 0
+    edu_pct   = int((done_modules / total_modules * 100)) if total_modules > 0 else 0
+
+    if visit_pct >= 75:
+        visit_msg = f"Outstanding! You attended {kept_visits} of {total_visits} appointments."
+    elif visit_pct >= 50:
+        visit_msg = f"Great effort! You attended {kept_visits} of {total_visits} appointments."
+    else:
+        visit_msg = f"Keep going! You attended {kept_visits} of {total_visits} appointments."
+
+    if done_modules >= 5:
+        edu_msg = f"Incredible! You completed {done_modules} education modules — knowledge is power!"
+    elif done_modules >= 2:
+        edu_msg = f"Nice work! You completed {done_modules} modules — keep learning!"
+    else:
+        edu_msg = f"Great start! You completed {done_modules} modules so far."
+
+    if therapy_count >= 10:
+        therapy_msg = f"Fantastic! You attended {therapy_count} therapy sessions — investing in your wellbeing!"
+    elif therapy_count >= 5:
+        therapy_msg = f"Well done! You attended {therapy_count} therapy sessions."
+    else:
+        therapy_msg = f"You attended {therapy_count} therapy sessions — every session counts!"
+
+    w1, w2, w3, w4 = st.columns(4)
+    w1.success(f"🎯 Appointments\n\n{visit_msg}\n\n{visit_pct}% kept")
+    w2.success(f"📚 Learning Journey\n\n{edu_msg}\n\n{edu_pct}% complete")
+    w3.success(f"🧠 Therapy\n\n{therapy_msg}")
+    w4.success(f"❤️ Days in Care\n\nYou have been actively managing your health for {days_in_care} days. That takes real strength!")
+
     st.markdown("---")
 
     col1, col2 = st.columns(2)
