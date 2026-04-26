@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import mysql.connector
-from mysql.connector import Error
+import pymysql
+from pymysql import Error
 
 # ── PAGE CONFIG ───────────────────────────────────────────────
 st.set_page_config(
