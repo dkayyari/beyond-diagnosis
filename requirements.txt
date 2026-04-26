@@ -1,5 +1,5 @@
-sqlalchemy==2.0.23
-pymysql==1.1.0
-cryptography==41.0.0
-pandas
 streamlit
+pandas
+pymysql==1.1.0
+cryptography
+SQLAlchemy==2.0.36
