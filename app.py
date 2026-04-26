@@ -86,14 +86,11 @@ def login_screen():
         st.markdown("## ❤️ Beyond Diagnosis")
         st.markdown("#### HIV Patient Support System")
         st.markdown("---")
-        username = st.text_input("Username:", placeholder="e.g. patient, doctor, therapist")
+        role_select = st.selectbox("Login as:", ["Patient", "Doctor", "Therapist"])
+        username = role_select.lower()
         password = st.text_input("Password:", type="password", placeholder="Enter your password")
         user_id_input = st.text_input("Enter your ID:", placeholder="e.g. 1, 25, 100")
         if st.button("🔐 Login", use_container_width=True):
-            username = username.strip().lower()
-            if username not in CREDENTIALS:
-                st.error("❌ Invalid username. Use: patient, doctor, or therapist.")
-                st.stop()
             if password != CREDENTIALS[username]["password"]:
                 st.error("❌ Incorrect password.")
                 st.stop()
