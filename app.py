@@ -132,8 +132,9 @@ def login_screen():
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
         SELECT p.patient_id, p.anon_alias, p.age_range, p.gender_identity,
-               p.registration_date, cs.care_stage_id, cs.stage_name, cs.cd4_range,
-               cs.intervention_level, cs.description
+               p.registration_date, cs.care_stage_id,
+               SUBSTRING_INDEX(cs.stage_name, ' (', 1) AS stage_name,
+               cs.cd4_range, cs.intervention_level, cs.description
         FROM patient p
         JOIN care_stage cs ON p.current_stage_id = cs.care_stage_id
         WHERE p.patient_id = {patient_id}
