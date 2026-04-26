@@ -233,20 +233,43 @@ def patient_dashboard(patient_id):
     else:
         st.info("No education records found.")
 
+
     st.markdown("---")
     st.markdown("### 🛡️ My Prevention Strategies")
-    df_pp = run_query(f"""
-        SELECT ps.strategy_name, ps.target_population,
-               pp.enrollment_date, pp.adherence_status
-        FROM patient_prevention pp
-        JOIN prevention_strategy ps ON pp.strategy_id = ps.strategy_id
-        WHERE pp.patient_id = {patient_id}
-        ORDER BY pp.enrollment_date DESC
-    """)
+    df_pp = run_query(f"SELECT ps.strategy_name, ps.target_population, pp.enrollment_date, pp.adherence_status FROM patient_prevention pp JOIN prevention_strategy ps ON pp.strategy_id = ps.strategy_id WHERE pp.patient_id = {patient_id} ORDER BY pp.enrollment_date DESC")
     if not df_pp.empty:
+        st.caption("Your currently enrolled prevention strategies:")
         st.dataframe(df_pp, use_container_width=True)
     else:
         st.info("No prevention strategies enrolled.")
+
+    stage_strategy_map = {
+        "Acute HIV Infection":                      ["HIV Testing & Status Awareness", "Condom Use & Barrier Methods", "Partner Services & Contact Notification"],
+        "Chronic HIV Infection (Clinical Latency)": ["ART — Treatment as Prevention (TasP)", "U=U (Undetectable = Untransmittable)", "HIV Testing & Status Awareness"],
+        "Symptomatic HIV Infection":                ["ART — Treatment as Prevention (TasP)", "Mental Health & Psychosocial Support", "U=U (Undetectable = Untransmittable)"],
+        "AIDS (Advanced HIV Disease)":              ["ART — Treatment as Prevention (TasP)", "Mental Health & Psychosocial Support", "Syringe Services Programs (SSP)"],
+        "Virally Suppressed (On ART)":              ["U=U (Undetectable = Untransmittable)", "ART — Treatment as Prevention (TasP)", "Mental Health & Psychosocial Support"],
+    }
+    df_stage_full = run_query(f"SELECT cs.stage_name FROM patient p JOIN care_stage cs ON p.current_stage_id = cs.care_stage_id WHERE p.patient_id = {patient_id}")
+    if not df_stage_full.empty:
+        full_stage = df_stage_full.iloc[0]['stage_name']
+        recommended = None
+        for key in stage_strategy_map:
+            if key.lower() in full_stage.lower() or full_stage.lower() in key.lower():
+                recommended = stage_strategy_map[key]
+                break
+        if not recommended:
+            recommended = ["ART — Treatment as Prevention (TasP)", "HIV Testing & Status Awareness", "Mental Health & Psychosocial Support"]
+        st.markdown("#### 💡 Recommended for Your Care Stage")
+        st.caption("Based on your current care stage, these strategies are commonly recommended:")
+        names_sql = ", ".join([f"'{s}'" for s in recommended])
+        df_rec = run_query(f"SELECT strategy_name, description, target_population FROM prevention_strategy WHERE strategy_name IN ({names_sql})")
+        if not df_rec.empty:
+            for _, r in df_rec.iterrows():
+                with st.expander(f"✅ {r['strategy_name']}"):
+                    st.write(r['description'])
+                    st.caption(f"Target population: {r['target_population']}")
+
 
 def clinician_dashboard(doctor_id):
     st.markdown("## 🏥 Clinician Dashboard")
