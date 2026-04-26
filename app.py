@@ -22,7 +22,13 @@ DB_CONFIG = {
 @st.cache_resource
 def get_connection():
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
+        conn = pymysql.connect(
+            host=DB_CONFIG["host"],
+            port=DB_CONFIG["port"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"],
+            database=DB_CONFIG["database"]
+        )
         return conn
     except Error as e:
         st.error(f"❌ Cannot connect to database: {e}")
