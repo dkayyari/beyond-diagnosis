@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 import pymysql
 
-# ── PAGE CONFIG ───────────────────────────────────────────────
 st.set_page_config(
     page_title="Beyond Diagnosis — HIV Support System",
     page_icon="❤️",
     layout="wide"
 )
 
-# ── DATABASE CONNECTION ───────────────────────────────────────
 def run_query(sql):
     try:
         conn = pymysql.connect(
@@ -17,17 +15,15 @@ def run_query(sql):
             port=36258,
             user="root",
             password="ZJPPtOprIWCdIcLrwSTYcynzzbJLRXQR",
-            database="railway",
-            cursorclass=pymysql.cursors.DictCursor
+            database="railway"
         )
         df = pd.read_sql(sql, conn)
         conn.close()
         return df
     except Exception as e:
-        st.error(f"Database error: {e}")
+        st.error(f"Query error: {e}")
         return pd.DataFrame()
 
-# ── STYLING ───────────────────────────────────────────────────
 st.markdown("""
 <style>
     .stApp { background-color: #F8FBFF; }
@@ -37,13 +33,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── SESSION STATE ─────────────────────────────────────────────
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.role      = None
     st.session_state.user_id   = None
 
-# ── LOGIN ─────────────────────────────────────────────────────
 def login_screen():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -65,9 +59,8 @@ def login_screen():
                 st.session_state.user_id   = int(user_id)
                 st.rerun()
             else:
-                st.error(f"❌ {role} ID {user_id} not found. Try 1–200 for patients, 1–15 for doctors/therapists.")
+                st.error(f"❌ {role} ID {user_id} not found.")
 
-# ── PATIENT DASHBOARD ─────────────────────────────────────────
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
         SELECT p.patient_id, p.anon_alias, p.age_range, p.gender_identity,
@@ -90,7 +83,6 @@ def patient_dashboard(patient_id):
     c4.metric("CD4 Range",  row['cd4_range'])
     st.info(f"🏥 **Intervention Level:** {row['intervention_level']}  \n📋 {str(row['description'])[:200]}...")
     st.markdown("---")
-
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 📅 Follow-Up History")
@@ -108,11 +100,9 @@ def patient_dashboard(patient_id):
                     return ['background-color: #FDEDEC'] * len(row)
                 else:
                     return ['background-color: #FEF9E7'] * len(row)
-            st.dataframe(df_fu.style.apply(highlight_status, axis=1),
-                         use_container_width=True, height=280)
+            st.dataframe(df_fu.style.apply(highlight_status, axis=1), use_container_width=True, height=280)
         else:
             st.info("No follow-up records found.")
-
     with col2:
         st.markdown("### 🧠 Therapy Sessions")
         df_ts = run_query(f"""
@@ -125,7 +115,6 @@ def patient_dashboard(patient_id):
             st.dataframe(df_ts, use_container_width=True, height=280)
         else:
             st.info("No therapy sessions found.")
-
     st.markdown("---")
     st.markdown("### 📚 Education Progress")
     df_ep = run_query(f"""
@@ -144,7 +133,6 @@ def patient_dashboard(patient_id):
         st.dataframe(df_ep, use_container_width=True, height=250)
     else:
         st.info("No education records found.")
-
     st.markdown("---")
     st.markdown("### 🛡️ My Prevention Strategies")
     df_pp = run_query(f"""
@@ -160,7 +148,6 @@ def patient_dashboard(patient_id):
     else:
         st.info("No prevention strategies enrolled.")
 
-# ── CLINICIAN DASHBOARD ───────────────────────────────────────
 def clinician_dashboard(doctor_id):
     st.markdown("## 🏥 Clinician Dashboard")
     df_doc = run_query(f"SELECT specialization, organization, years_experience FROM doctor WHERE doctor_id = {doctor_id}")
@@ -168,14 +155,12 @@ def clinician_dashboard(doctor_id):
         d = df_doc.iloc[0]
         st.markdown(f"**Specialization:** {d['specialization']}  |  **Organization:** {d['organization']}  |  **Experience:** {d['years_experience']} years")
     st.markdown("---")
-
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("👥 Total Patients",   run_query("SELECT COUNT(*) AS n FROM patient").iloc[0]['n'])
     c2.metric("⚠️ Missed Visits",    run_query("SELECT COUNT(*) AS n FROM followup_instance WHERE status = 'Missed'").iloc[0]['n'])
     c3.metric("✅ Completed Visits", run_query("SELECT COUNT(*) AS n FROM followup_instance WHERE status = 'Completed'").iloc[0]['n'])
     c4.metric("🧠 Therapy Sessions", run_query("SELECT COUNT(*) AS n FROM therapy_session").iloc[0]['n'])
     st.markdown("---")
-
     st.markdown("### ⚠️ Missed Visit Alerts — Top 10 Patients")
     df_missed = run_query("""
         SELECT p.patient_id, p.anon_alias, p.age_range,
@@ -190,7 +175,6 @@ def clinician_dashboard(doctor_id):
     if not df_missed.empty:
         st.dataframe(df_missed, use_container_width=True, height=280)
     st.markdown("---")
-
     st.markdown("### 👥 All Patients Overview")
     search = st.text_input("🔍 Search by alias or care stage:", "")
     df_all = run_query("""
@@ -212,7 +196,6 @@ def clinician_dashboard(doctor_id):
         ]
     st.dataframe(df_all, use_container_width=True, height=350)
     st.markdown("---")
-
     st.markdown("### 📊 Care Stage Distribution")
     df_stages = run_query("""
         SELECT cs.stage_name, COUNT(*) AS patient_count
@@ -223,7 +206,6 @@ def clinician_dashboard(doctor_id):
     if not df_stages.empty:
         st.bar_chart(df_stages.set_index('stage_name')['patient_count'])
 
-# ── THERAPIST DASHBOARD ───────────────────────────────────────
 def therapist_dashboard(therapist_id):
     st.markdown("## 🧠 Therapist Dashboard")
     df_th = run_query(f"SELECT therapy_type, organization, license_type FROM therapist WHERE therapist_id = {therapist_id}")
@@ -231,13 +213,11 @@ def therapist_dashboard(therapist_id):
         t = df_th.iloc[0]
         st.markdown(f"**Therapy Type:** {t['therapy_type']}  |  **Organization:** {t['organization']}  |  **License:** {t['license_type']}")
     st.markdown("---")
-
     c1, c2, c3 = st.columns(3)
     c1.metric("📋 Total Sessions",    run_query(f"SELECT COUNT(*) AS n FROM therapy_session WHERE therapist_id = {therapist_id}").iloc[0]['n'])
     c2.metric("✅ Improved Outcomes", run_query(f"SELECT COUNT(*) AS n FROM therapy_session WHERE therapist_id = {therapist_id} AND outcome = 'Improved'").iloc[0]['n'])
     c3.metric("👥 Patients Seen",     run_query(f"SELECT COUNT(DISTINCT patient_id) AS n FROM therapy_session WHERE therapist_id = {therapist_id}").iloc[0]['n'])
     st.markdown("---")
-
     st.markdown("### 📋 My Sessions")
     df_sessions = run_query(f"""
         SELECT ts.session_date, p.anon_alias, ts.modality, ts.outcome, ts.session_notes
@@ -251,7 +231,6 @@ def therapist_dashboard(therapist_id):
     else:
         st.info("No sessions found.")
     st.markdown("---")
-
     st.markdown("### 📊 Outcome Distribution")
     df_outcomes = run_query(f"""
         SELECT outcome, COUNT(*) AS count FROM therapy_session
@@ -261,11 +240,9 @@ def therapist_dashboard(therapist_id):
     if not df_outcomes.empty:
         st.bar_chart(df_outcomes.set_index('outcome')['count'])
 
-# ── EDUCATION HUB ─────────────────────────────────────────────
 def education_hub():
     st.markdown("## 📚 Education & Prevention Hub")
     st.markdown("---")
-
     st.markdown("### 🔍 Browse Education Resources")
     df_res = run_query("SELECT resource_id, title, category, format, stage_target, source_url FROM education_resource ORDER BY category, title")
     if not df_res.empty:
@@ -274,17 +251,14 @@ def education_hub():
         df_show    = df_res if selected == "All" else df_res[df_res['category'] == selected]
         st.dataframe(df_show, use_container_width=True, height=300)
     st.markdown("---")
-
     st.markdown("### 🛡️ Prevention Strategies")
     df_prev = run_query("SELECT strategy_name, target_population, source_guideline FROM prevention_strategy ORDER BY strategy_name")
     st.dataframe(df_prev, use_container_width=True)
     st.markdown("---")
-
     st.markdown("### 🔬 Opportunistic Infection Reference (CDC/NIH Guidelines)")
     df_oi = run_query("SELECT oi_name, cd4_threshold, prophylaxis_rec, first_line_drug, monitoring_interval FROM oi_reference ORDER BY cd4_threshold")
     st.dataframe(df_oi, use_container_width=True)
 
-# ── MAIN APP ──────────────────────────────────────────────────
 if not st.session_state.logged_in:
     login_screen()
 else:
