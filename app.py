@@ -1,21 +1,24 @@
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine, text
+import pymysql
+import pandas as pd
 
-# ── PAGE CONFIG ───────────────────────────────────────────────
-st.set_page_config(
-    page_title="Beyond Diagnosis — HIV Support System",
-    page_icon="❤️",
-    layout="wide"
-)
-
-# ── DATABASE CONNECTION ───────────────────────────────────────
-DB_URL = "mysql+pymysql://root:ZJPPtOprIWCdIcLrwSTYcynzzbJLRXQR@shortline.proxy.rlwy.net:36258/railway"
-
-@st.cache_resource
-def get_engine():
-    return create_engine(DB_URL)
-
+def run_query(sql):
+    try:
+        conn = pymysql.connect(
+            host="shortline.proxy.rlwy.net",
+            port=36258,
+            user="root",
+            password="ZJPPtOprIWCdIcLrwSTYcynzzbJLRXQR",
+            database="railway",
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        df = pd.read_sql(sql, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        return pd.DataFrame()
 def run_query(sql):
     try:
         engine = get_engine()
