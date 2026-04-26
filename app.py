@@ -24,6 +24,45 @@ def run_query(sql):
         st.error(f"Query error: {e}")
         return pd.DataFrame()
 
+# ── Global CSS
+st.markdown("""
+<style>
+    .stApp { background-color: #F8FBFF; }
+    h2 { color: #0D8A8A !important; }
+    h3 { color: #1A3A5C !important; }
+    .profile-card {
+        background: linear-gradient(135deg, #1A3A5C, #0D8A8A);
+        border-radius: 12px;
+        padding: 16px;
+        color: white;
+        text-align: center;
+        margin-bottom: 12px;
+    }
+    .profile-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .profile-role { font-size: 12px; opacity: 0.85; }
+    .profile-stage {
+        font-size: 12px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 20px;
+        padding: 3px 10px;
+        margin-top: 6px;
+        display: inline-block;
+    }
+    .welcome-banner {
+        background: linear-gradient(135deg, #E8F5F5, #EFF6FF);
+        border-left: 5px solid #0D8A8A;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+    }
+    .welcome-title { font-size: 20px; font-weight: 700; color: #1A3A5C; margin-bottom: 4px; }
+    .welcome-msg { font-size: 14px; color: #4A5568; }
+    .badge-completed { background:#D1FAE5; color:#065F46; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+    .badge-missed    { background:#FEE2E2; color:#991B1B; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+    .badge-scheduled { background:#FEF3C7; color:#92400E; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+</style>
+""", unsafe_allow_html=True)
+
 STAGE_DEFS = [
     {"id": 1, "short": "Acute",       "cd4": "> 500 cells/mm³",      "emoji": "🔵"},
     {"id": 2, "short": "Chronic",     "cd4": "200–499 cells/mm³",    "emoji": "🟡"},
@@ -101,8 +140,12 @@ def patient_dashboard(patient_id):
         st.error("Patient not found.")
         return
     row = df_patient.iloc[0]
-    st.markdown(f"## 👤 Welcome, {row['anon_alias']}")
-    st.markdown("---")
+    st.markdown(f"""
+    <div class="welcome-banner">
+        <div class="welcome-title">👤 Welcome back, {row['anon_alias']}!</div>
+        <div class="welcome-msg">Every day you show up for your health is a victory. Here is your care summary.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ── Metrics
     c1, c2, c3, c4 = st.columns(4)
@@ -397,9 +440,16 @@ if not st.session_state.logged_in:
     login_screen()
 else:
     with st.sidebar:
-        st.markdown("## ❤️ Beyond Diagnosis")
-        st.markdown(f"**Role:** {st.session_state.role}")
-        st.markdown(f"**ID:** {st.session_state.user_id}")
+        # Profile card
+        role_icon = {"Patient": "👤", "Doctor": "🏥", "Therapist": "🧠"}.get(st.session_state.role, "👤")
+        st.markdown(f"""
+        <div class="profile-card">
+            <div style="font-size:32px">{role_icon}</div>
+            <div class="profile-name">ID: {st.session_state.user_id}</div>
+            <div class="profile-role">{st.session_state.role}</div>
+            <div class="profile-stage">❤️ Beyond Diagnosis</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown("---")
         if st.session_state.role == "Patient":
             page = st.radio("Navigate:", ["🏠 My Dashboard", "📚 Education Hub"])
