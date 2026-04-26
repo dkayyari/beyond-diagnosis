@@ -80,8 +80,13 @@ def login_screen():
         st.markdown("#### HIV Patient Support System")
         st.markdown("---")
         role    = st.selectbox("I am a:", ["Patient", "Doctor", "Therapist"])
-        user_id = st.number_input("Enter your ID:", min_value=1, max_value=500, value=1, step=1)
+        user_id_input = st.text_input("Enter your ID:", placeholder="e.g. 1, 25, 100")
         if st.button("🔐 Login", use_container_width=True):
+            try:
+                user_id = int(user_id_input.strip())
+            except ValueError:
+                st.error("❌ Please enter a valid numeric ID.")
+                st.stop()
             if role == "Patient":
                 df = run_query(f"SELECT patient_id FROM patient WHERE patient_id = {user_id}")
             elif role == "Doctor":
@@ -91,10 +96,10 @@ def login_screen():
             if not df.empty:
                 st.session_state.logged_in = True
                 st.session_state.role      = role
-                st.session_state.user_id   = int(user_id)
+                st.session_state.user_id   = user_id
                 st.rerun()
             else:
-                st.error(f"❌ {role} ID {user_id} not found.")
+                st.error(f"❌ {role} ID {user_id} not found. Try 1–200 for patients, 1–15 for doctors/therapists.")
 
 def patient_dashboard(patient_id):
     df_patient = run_query(f"""
