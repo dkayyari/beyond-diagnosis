@@ -1,3 +1,5 @@
 streamlit
 pandas
 mysql-connector-python
+mysql-connector
+PyMySQL
